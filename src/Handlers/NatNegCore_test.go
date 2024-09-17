@@ -1,7 +1,7 @@
 package Handlers
 
 import (
-	"fmt"
+	"log"
 	"net/netip"
 	"testing"
 	"time"
@@ -10,8 +10,10 @@ import (
 )
 
 type NNCoreTestOBH struct {
-	gotDeadbeat bool
-	gotConnect  bool
+	gotDeadbeat       bool
+	gotConnect        bool
+	connectAddressIdx int
+	connectAddress    [2]netip.AddrPort
 }
 
 func (c *NNCoreTestOBH) SendMessage(msg Messages.Message) {
@@ -23,12 +25,14 @@ func (c *NNCoreTestOBH) SendDeadbeatMessage(client *NatNegSessionClient) {
 }
 func (c *NNCoreTestOBH) SendConnectMessage(client *NatNegSessionClient, ipAddress netip.AddrPort) {
 	c.gotConnect = true
+	c.connectAddress[c.connectAddressIdx] = ipAddress
+	c.connectAddressIdx = c.connectAddressIdx + 1
 }
 
 func setup() (NatNegCore, *NNCoreTestOBH) {
 	var obh *NNCoreTestOBH = &NNCoreTestOBH{}
 	var core NatNegCore
-	core.Init(obh)
+	core.Init(obh, 2)
 	return core, obh
 }
 func TestInit_GotPeers_OpenNATAll(t *testing.T) {
@@ -43,7 +47,7 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 
 	var initMsg Messages.InitMessage
 	initMsg.LocalIP = 111
-	initMsg.LocalPort = 666
+	initMsg.LocalPort = 7777
 
 	//CLIENT 1
 	initMsg.ClientIndex = 0
@@ -85,6 +89,9 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 
 	if !obh.gotConnect {
 		t.Errorf("Didn't get connect message")
+	} else {
+		log.Printf("got connect address 1: %s\n", obh.connectAddress[0].String())
+		log.Printf("got connect address 2: %s\n", obh.connectAddress[1].String())
 	}
 }
 func TestDeadbeat(t *testing.T) {
@@ -107,7 +114,6 @@ func TestDeadbeat(t *testing.T) {
 	for i := range 60 {
 		core.Tick()
 		time.Sleep(1 * time.Second)
-		fmt.Printf("tick tick %d\n", i)
 		if obh.gotDeadbeat {
 			break
 		}

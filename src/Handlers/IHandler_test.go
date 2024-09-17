@@ -1,12 +1,7 @@
 package Handlers
 
-/*
-test cases:
-    * nn version 2 - nn init - no peer - expect deadbeat
-    * nn version 2 - nn init - with peer - expect connection - send ack
-*/
-
-/*import (
+import (
+	"net/netip"
 	"testing"
 	"time"
 
@@ -14,8 +9,12 @@ test cases:
 )
 
 type OutboundTestHandler struct {
-	gotReportData bool
-	gotInitAck    bool
+	gotReportData      bool
+	gotInitAck         bool
+	gotDeadbeat        bool
+	curretConnectIndex int
+	connectClients     [2]*NatNegSessionClient
+	connectAddresses   [2]netip.AddrPort
 }
 
 func (h *OutboundTestHandler) SendMessage(msg Messages.Message) {
@@ -24,13 +23,23 @@ func (h *OutboundTestHandler) SendMessage(msg Messages.Message) {
 	} else if msg.Type == "init_ack" {
 		h.gotInitAck = true
 	}
-
+}
+func (h *OutboundTestHandler) SendDeadbeatMessage(client *NatNegSessionClient) {
+	h.gotDeadbeat = true
+}
+func (h *OutboundTestHandler) SendConnectMessage(client *NatNegSessionClient, ipAddress netip.AddrPort) {
+	h.connectAddresses[h.curretConnectIndex] = ipAddress
+	h.connectClients[h.curretConnectIndex] = client
+	h.curretConnectIndex = h.curretConnectIndex + 1
 }
 
 func TestReport(t *testing.T) {
 	var outboundHandler IOutboundHandler
 	var testHandler *OutboundTestHandler = &OutboundTestHandler{}
 	outboundHandler = testHandler
+
+	var core NatNegCore
+	core.Init(outboundHandler, 2)
 
 	var msg Messages.Message
 	var reportMsg Messages.ReportMessage
@@ -39,35 +48,181 @@ func TestReport(t *testing.T) {
 	msg.Type = "report"
 	msg.Version = 4
 
-	HandleMessage(outboundHandler, msg)
+	HandleMessage(core, outboundHandler, msg)
 
 	if !testHandler.gotReportData {
 		t.Errorf("report ack not sent")
 	}
 }
 
-func TestInit(t *testing.T) {
+func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	var outboundHandler IOutboundHandler
 	var testHandler *OutboundTestHandler = &OutboundTestHandler{}
 	outboundHandler = testHandler
+
+	var core NatNegCore
+	core.Init(outboundHandler, 30)
+
+	var cookie = 123321
+
+	var msg Messages.Message
+	var initMsg Messages.InitMessage
+	initMsg.ClientIndex = 0
+	initMsg.LocalIP = 0x0A000001
+	initMsg.LocalPort = 7777
+	initMsg.PortType = 0
+	initMsg.UseGamePort = 1
+
+	msg.Message = initMsg
+	msg.Cookie = cookie
+	msg.Type = "init"
+	msg.Version = 2
+	msg.DriverAddress = "127.0.0.1:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	msg.Gamename = "test"
+	HandleMessage(core, outboundHandler, msg)
+
+	msg.DriverAddress = "127.0.0.2:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	initMsg.PortType = 1
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
+
+	msg.DriverAddress = "127.0.0.3:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	initMsg.PortType = 2
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
+
+	initMsg.ClientIndex = 1
+	initMsg.LocalIP = 0x0A000001
+	initMsg.LocalPort = 7777
+	initMsg.PortType = 0
+	initMsg.UseGamePort = 1
+
+	msg.Message = initMsg
+	msg.Type = "init"
+	msg.Version = 2
+	msg.DriverAddress = "127.0.0.1:111111"
+	msg.FromAddress = "66.25.25.25:6500"
+	msg.Gamename = "test"
+	HandleMessage(core, outboundHandler, msg)
+
+	msg.DriverAddress = "127.0.0.2:111111"
+	msg.FromAddress = "66.25.25.25:6500"
+	initMsg.PortType = 1
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
+
+	msg.DriverAddress = "127.0.0.3:111111"
+	msg.FromAddress = "66.25.25.25:6500"
+	initMsg.PortType = 2
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
+
+	for i := 0; i < 10 && testHandler.curretConnectIndex != 2; i++ {
+		core.Tick()
+		time.Sleep(1 * time.Second)
+	}
+
+	if testHandler.curretConnectIndex != 2 {
+		t.Errorf("Unexpected connect index")
+	}
+	var gpInitAddr = testHandler.connectClients[0].findAddressInfoOfType(NN_SERVER_GP)
+	if gpInitAddr.Address != testHandler.connectAddresses[1] {
+		t.Errorf("Unexpected connect address: %s != %s", gpInitAddr.Address.String(), testHandler.connectAddresses[1].String())
+	}
+
+	gpInitAddr = testHandler.connectClients[1].findAddressInfoOfType(NN_SERVER_GP)
+	if gpInitAddr.Address != testHandler.connectAddresses[0] {
+		t.Errorf("Unexpected connect address: %s != %s", gpInitAddr.Address.String(), testHandler.connectAddresses[0].String())
+	}
+
+	//now wait for retry before sending ack back
+	testHandler.curretConnectIndex = 0 //reset idx
+
+	for i := 0; i < 10 && testHandler.curretConnectIndex != 2; i++ {
+		core.Tick()
+		time.Sleep(1 * time.Second)
+	}
+
+	if testHandler.curretConnectIndex != 2 {
+		t.Errorf("Unexpected connect index - retry not sent")
+	}
+
+	gpInitAddr = testHandler.connectClients[0].findAddressInfoOfType(NN_SERVER_GP)
+	if gpInitAddr.Address != testHandler.connectAddresses[1] {
+		t.Errorf("Unexpected connect address: %s != %s", gpInitAddr.Address.String(), testHandler.connectAddresses[1].String())
+	}
+
+	gpInitAddr = testHandler.connectClients[1].findAddressInfoOfType(NN_SERVER_GP)
+	if gpInitAddr.Address != testHandler.connectAddresses[0] {
+		t.Errorf("Unexpected connect address: %s != %s", gpInitAddr.Address.String(), testHandler.connectAddresses[0].String())
+	}
+
+	//send acks from both clients
+	var connectAckMsg Messages.Message
+	connectAckMsg.Cookie = cookie
+	connectAckMsg.DriverAddress = "127.0.0.2:111111"
+	connectAckMsg.FromAddress = "66.25.25.25:6500"
+	connectAckMsg.Type = "connect_ack"
+	HandleMessage(core, outboundHandler, connectAckMsg)
+
+	connectAckMsg.FromAddress = "25.25.25.25:6500"
+	HandleMessage(core, outboundHandler, connectAckMsg)
+
+	var sess = core.findSessionByCookie(cookie)
+	if sess != nil {
+		t.Errorf("Session not deleted")
+	}
+
+	if !testHandler.gotInitAck {
+		t.Errorf("didn't get init ack")
+	}
+}
+
+func TestInit_ExpectDeadbeat(t *testing.T) {
+	var outboundHandler IOutboundHandler
+	var testHandler *OutboundTestHandler = &OutboundTestHandler{}
+	outboundHandler = testHandler
+
+	var core NatNegCore
+	core.Init(outboundHandler, 2)
 
 	var msg Messages.Message
 	var initMsg Messages.InitMessage
 	initMsg.ClientIndex = 1
 	initMsg.LocalIP = 0x0A000001
 	initMsg.LocalPort = 7777
-	initMsg.PortType = 3
+	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
 	msg.Message = initMsg
 	msg.Type = "init"
-	msg.Version = 4
+	msg.Version = 2
+	msg.DriverAddress = "127.0.0.1:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	msg.Gamename = "test"
+	HandleMessage(core, outboundHandler, msg)
 
-	HandleMessage(outboundHandler, msg)
+	msg.DriverAddress = "127.0.0.2:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	initMsg.PortType = 1
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
 
-	time.Sleep(10 * time.Second)
-	if !testHandler.gotInitAck {
-		t.Errorf("init ack not sent")
+	msg.DriverAddress = "127.0.0.3:111111"
+	msg.FromAddress = "25.25.25.25:6500"
+	initMsg.PortType = 2
+	msg.Message = initMsg
+	HandleMessage(core, outboundHandler, msg)
+
+	for i := 0; i < 10 && !testHandler.gotDeadbeat; i++ {
+		core.Tick()
+		time.Sleep(1 * time.Second)
+	}
+
+	if !testHandler.gotDeadbeat {
+		t.Errorf("didn't get deadbeat")
 	}
 }
-*/

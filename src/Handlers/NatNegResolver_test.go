@@ -6,11 +6,6 @@ import (
 	"time"
 )
 
-/*
-private IP matches public IP (no nat)
-all probes pass (no firewall)
-expected nat open
-*/
 func TestResolver_ExpectedNoNAT(t *testing.T) {
 	var session NatNegSessionClient
 	session.Version = 2

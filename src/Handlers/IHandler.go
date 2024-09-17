@@ -7,10 +7,10 @@ import (
 )
 
 type IHandler interface {
-	HandleMessage(outboundHandler IOutboundHandler, msg Messages.Message)
+	HandleMessage(core NatNegCore, outboundHandler IOutboundHandler, msg Messages.Message)
 }
 
-func HandleMessage(outboundHandler IOutboundHandler, msg Messages.Message) {
+func HandleMessage(core NatNegCore, outboundHandler IOutboundHandler, msg Messages.Message) {
 	var handler IHandler
 	fmt.Println("Handle message")
 	switch msg.Type {
@@ -18,10 +18,12 @@ func HandleMessage(outboundHandler IOutboundHandler, msg Messages.Message) {
 	case "connect":
 	case "natify":
 		handler = nil
+	case "connect_ack":
+		handler = &ConnectAckHandler{}
 	case "init":
 		handler = &InitHandler{}
 	case "report":
 		handler = &ReportHandler{}
 	}
-	handler.HandleMessage(outboundHandler, msg)
+	handler.HandleMessage(core, outboundHandler, msg)
 }

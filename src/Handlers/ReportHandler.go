@@ -5,12 +5,9 @@ import (
 )
 
 type ReportHandler struct {
-	Version int         `json:"version"`
-	Type    int         `json:"type"`
-	Message interface{} `json:"message"`
 }
 
-func (b *ReportHandler) HandleMessage(outboundHandler IOutboundHandler, msg Messages.Message) {
+func (b *ReportHandler) HandleMessage(core NatNegCore, outboundHandler IOutboundHandler, msg Messages.Message) {
 	//var reportMsg Messages.ReportMessage = msg.Message.(Messages.ReportMessage)
 	//fmt.Printf("aa %s\n", reportMsg.Gamename)
 

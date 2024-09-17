@@ -9,10 +9,6 @@ import (
 	"openspy.net/natneg-helper/src/Messages"
 )
 
-const (
-	DEADBEAT_TIME_SECS = 2
-)
-
 type NNServerType int
 
 const (
@@ -42,6 +38,10 @@ type NatNegSessionClient struct {
 
 	//from CONNECT_PING unless ERT is available, then its ERT
 	ConnectPingAddresses []NatNegSessionAddressInfo
+
+	ConnectAddress  netip.AddrPort //final resolved address - for retries
+	LastSentConnect time.Time
+	ConnectAckTime  time.Time
 }
 
 func (c *NatNegSessionClient) findAddressInfoOfType(servType NNServerType) *NatNegSessionAddressInfo {
@@ -101,27 +101,27 @@ func (s *NatNegSession) IsComplete() bool {
 	return s.SessionClients[0].IsComplete() && s.SessionClients[1].IsComplete()
 }
 
-func (s *NatNegSession) DoERTTest() bool {
-	return s.Version == 4
-}
-
 type NatNegCore struct {
-	timer           *time.Ticker
-	Sessions        map[int]*NatNegSession
-	outboundHandler IOutboundHandler
-	resolver        INatNegResolver
+	timer               *time.Ticker
+	Sessions            map[int]*NatNegSession
+	outboundHandler     IOutboundHandler
+	resolver            INatNegResolver
+	deadbeatTimeoutSecs int
+	connectRetrySecs    int
 }
 
-func (c *NatNegCore) Init(obh IOutboundHandler) {
+func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int) {
 	c.timer = time.NewTicker(time.Second)
 	c.Sessions = make(map[int]*NatNegSession)
 	c.outboundHandler = obh
+	c.deadbeatTimeoutSecs = deadbeatTimeoutSecs
+	c.connectRetrySecs = 5
 	c.resolver = &NatNegResolver{}
 }
 func (c *NatNegCore) checkDeadbeats(currentTime time.Time) {
 	for _, session := range c.Sessions {
 		diff := currentTime.Sub(session.SessionCreateTime).Seconds()
-		if diff > DEADBEAT_TIME_SECS {
+		if diff > float64(c.deadbeatTimeoutSecs) {
 			c.deleteSession(session.Cookie, true)
 		}
 	}
@@ -143,6 +143,7 @@ func (c *NatNegCore) createSession(msg Messages.Message) *NatNegSession {
 func (c *NatNegCore) Tick() {
 	t := <-c.timer.C
 	c.checkDeadbeats(t)
+	c.checkConnectRetries(t)
 }
 
 func (c *NatNegCore) findSessionByCookie(cookie int) *NatNegSession {
@@ -212,7 +213,7 @@ func (c *NatNegCore) HandleInitMessage(msg Messages.Message) {
 
 	clientSession.PrivateAddress = netip.MustParseAddrPort("192.168.11.22:5511")
 
-	fmt.Printf("got cookie: %d, idx: %d, addr: %s, type: %d\n", msg.Cookie, initMsg.ClientIndex, ipport.String(), initMsg.PortType)
+	fmt.Printf("got cookie: %d, idx: %d, addr: %s, type: %d, private: %s\n", msg.Cookie, initMsg.ClientIndex, ipport.String(), initMsg.PortType, clientSession.PrivateAddress.String())
 
 	if session.IsComplete() {
 		c.sendNegotiatedConnection(session)
@@ -220,13 +221,33 @@ func (c *NatNegCore) HandleInitMessage(msg Messages.Message) {
 
 }
 
+func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
+	for _, session := range c.Sessions {
+		diff := currentTime.Sub(session.SessionClients[0].LastSentConnect).Seconds()
+		if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
+			session.SessionClients[0].LastSentConnect = time.Now()
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
+		}
+
+		diff = currentTime.Sub(session.SessionClients[1].LastSentConnect).Seconds()
+		if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
+			session.SessionClients[1].LastSentConnect = time.Now()
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
+		}
+	}
+}
+
 func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 	var resolved = c.resolver.ResolveNAT(session.SessionClients[0])
+	session.SessionClients[1].ConnectAddress = resolved
 	fmt.Printf("Send conn message 1: %s\n", resolved.String())
-	c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
+	session.SessionClients[1].LastSentConnect = time.Now()
+	c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
 
 	resolved = c.resolver.ResolveNAT(session.SessionClients[1])
+	session.SessionClients[0].ConnectAddress = resolved
 	fmt.Printf("Send conn message 2: %s\n", resolved.String())
-	c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
+	session.SessionClients[0].LastSentConnect = time.Now()
+	c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
 
 }
