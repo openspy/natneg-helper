@@ -26,6 +26,12 @@ func (b *Message) UnmarshalJSON(data []byte) error {
 	}
 
 	switch typ.Type {
+	case "natify":
+		fallthrough
+	case "ert":
+		fallthrough
+	case "ert_ack":
+		fallthrough
 	case "init":
 		b.Message = new(InitMessage)
 	case "connect":

@@ -25,7 +25,7 @@ func (h *OutboundTestHandler) SendMessage(msg Messages.Message) {
 		h.gotInitAck = true
 	} else if msg.Type == "ert" {
 		var portType int = 0
-		if msg.Message.(Messages.ERTMessage).UnsolicitedPort {
+		if msg.Message.(*Messages.ERTMessage).UnsolicitedPort {
 			portType = 1
 		}
 		log.Printf("got ert req - %s %s %d\n", msg.DriverAddress, msg.Address, portType)
@@ -51,7 +51,7 @@ func TestReport(t *testing.T) {
 	var msg Messages.Message
 	var reportMsg Messages.ReportMessage
 	reportMsg.Gamename = "gamename"
-	msg.Message = reportMsg
+	msg.Message = &reportMsg
 	msg.Type = "report"
 	msg.Version = 4
 
@@ -80,7 +80,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	msg.Cookie = cookie
 	msg.Type = "init"
 	msg.Version = 2
@@ -92,13 +92,13 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	msg.DriverAddress = "127.0.0.2:11111"
 	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 1
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	msg.DriverAddress = "127.0.0.3:11111"
 	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 2
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	initMsg.ClientIndex = 1
@@ -107,7 +107,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	msg.Type = "init"
 	msg.Version = 2
 	msg.DriverAddress = "127.0.0.1:11111"
@@ -118,13 +118,13 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	msg.DriverAddress = "127.0.0.2:11111"
 	msg.Address = "66.25.25.25:6500"
 	initMsg.PortType = 1
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	msg.DriverAddress = "127.0.0.3:11111"
 	msg.Address = "66.25.25.25:6500"
 	initMsg.PortType = 2
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	for i := 0; i < 10 && testHandler.curretConnectIndex != 2; i++ {
@@ -206,7 +206,7 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	msg.Type = "init"
 	msg.Version = 2
 	msg.DriverAddress = "127.0.0.1:11111"
@@ -217,13 +217,13 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	msg.DriverAddress = "127.0.0.2:11111"
 	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 1
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	msg.DriverAddress = "127.0.0.3:11111"
 	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 2
-	msg.Message = initMsg
+	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
 	for i := 0; i < 10 && !testHandler.gotDeadbeat; i++ {

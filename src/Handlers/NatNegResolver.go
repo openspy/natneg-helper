@@ -1,7 +1,6 @@
 package Handlers
 
 import (
-	"log"
 	"net/netip"
 )
 
@@ -34,6 +33,26 @@ const (
 	NAT_MAPPING_SCHEME_MIXED
 )
 
+func NATTypeToString(natType NATType) string {
+	switch natType {
+	case NAT_TYPE_UNKNOWN:
+		return "UNKNOWN"
+	case NAT_TYPE_NO_NAT:
+		return "NO_NAT"
+	case NAT_TYPE_FIREWALL_ONLY:
+		return "FIREWALL_ONLY"
+	case NAT_TYPE_FULL_CONE:
+		return "FULL_CONE"
+	case NAT_TYPE_RESTRICTED_CONE:
+		return "RESTRICTED_CONE"
+	case NAT_TYPE_PORT_RESTRICTED_CONE:
+		return "PORT_RESTRICTED_CONE"
+	case NAT_TYPE_SYMMETRIC:
+		return "SYMMETRIC"
+	}
+	return ""
+}
+
 type NatNegResolver struct {
 }
 
@@ -50,7 +69,10 @@ func (c *NatNegResolver) detectNAT_Version2(session NatNegSessionClient) (NATTyp
 	var promiscuity NATPromiscuity = NAT_PROMISCUITY_PROMISCUITY_NOT_AVAILABLE
 	var natMappingScheme NATMappingScheme = NAT_MAPPING_SCHEME_UNRECOGNIZED
 
-	var solicitedReply *NatNegSessionAddressInfo = session.findAddressInfoOfType(NN_SERVER_NN1)
+	var solicitedReply *NatNegSessionAddressInfo = session.findAddressInfoOfType(NN_SERVER_GP)
+	if solicitedReply == nil {
+		solicitedReply = session.findAddressInfoOfType(NN_SERVER_NN1)
+	}
 	var solicitedReply2 *NatNegSessionAddressInfo = session.findAddressInfoOfType(NN_SERVER_NN2)
 	var unsolicitedIPReply *NatNegSessionAddressInfo = session.findAddressInfoOfType(NN_SERVER_UNSOLICITED_IP_PROBE)
 	var unsolicitedIPPortReply *NatNegSessionAddressInfo = session.findAddressInfoOfType(NN_SERVER_UNSOLICITED_IPPORT_PROBE)
@@ -97,38 +119,64 @@ func (c *NatNegResolver) detectNAT_Version2(session NatNegSessionClient) (NATTyp
 		// Using an incremental (+1) port mapping scheme there after.
 		natMappingScheme = NAT_MAPPING_SCHEME_MIXED
 	}
-
 	return natType, promiscuity, natMappingScheme
 }
 
 func (c NatNegResolver) resolveNAT(session NatNegSessionClient, natType NATType, natPromiscuity NATPromiscuity, mappingScheme NATMappingScheme) netip.AddrPort {
+	var serv = NN_SERVER_NN1
+	if session.UseGamePort {
+		serv = NN_SERVER_GP
+	}
+	var rootServer = session.findAddressInfoOfType(serv)
+	if rootServer == nil {
+		return netip.AddrPort{}
+	}
+	var unsolicitedAddress netip.AddrPort
+	if session.PrivateAddress.Port() != 0 {
+		unsolicitedAddress = netip.AddrPortFrom(rootServer.Address.Addr(), session.PrivateAddress.Port())
+	} else {
+		unsolicitedAddress = rootServer.Address
+	}
+
+	var returnAddress netip.AddrPort
 	switch natType {
 	case NAT_TYPE_NO_NAT:
-		return session.findAddressInfoOfType(NN_SERVER_UNSOLICITED_IPPORT_PROBE).Address
+		fallthrough
 	case NAT_TYPE_FIREWALL_ONLY:
-		return session.InitAddresses[0].Address
-	case NAT_TYPE_FULL_CONE:
-		return session.findAddressInfoOfType(NN_SERVER_UNSOLICITED_IPPORT_PROBE).Address
-	case NAT_TYPE_RESTRICTED_CONE:
-		return session.findAddressInfoOfType(NN_SERVER_UNSOLICITED_PORT_PROBE).Address
+		fallthrough
 	case NAT_TYPE_PORT_RESTRICTED_CONE:
-		return session.InitAddresses[0].Address
+		fallthrough
+	case NAT_TYPE_RESTRICTED_CONE:
+		fallthrough
+	case NAT_TYPE_FULL_CONE:
+		returnAddress = unsolicitedAddress
+
+	//these nat types are unlikely to work
+	default:
+		fallthrough
 	case NAT_TYPE_SYMMETRIC:
-		//this needs to be figured out more, probably the user just cannot connect
-		return session.InitAddresses[0].Address
-
+		fallthrough
+	case NAT_TYPE_UNKNOWN:
+		returnAddress = unsolicitedAddress
 	}
-	return session.InitAddresses[0].Address
 
+	return returnAddress
+
+}
+func (c *NatNegResolver) DetectNAT(session NatNegSessionClient) (NATType, NATPromiscuity, NATMappingScheme) {
+	switch session.Version {
+	default:
+		fallthrough
+	case 2:
+		return c.detectNAT_Version2(session)
+		/*default:
+		log.Panicf("Unhandled NAT version")*/
+	}
+	//return NAT_TYPE_UNKNOWN, NAT_PROMISCUITY_PROMISCUITY_NOT_AVAILABLE, NAT_MAPPING_SCHEME_UNRECOGNIZED
 }
 func (c *NatNegResolver) ResolveNAT(session NatNegSessionClient) netip.AddrPort {
 
-	switch session.Version {
-	case 2:
-		natType, promiscuity, natMappingScheme := c.detectNAT_Version2(session)
-		return c.resolveNAT(session, natType, promiscuity, natMappingScheme)
-	default:
-		log.Panicf("Unhandled NAT version")
-	}
-	return netip.AddrPort{}
+	natType, promiscuity, natMappingScheme := c.DetectNAT(session)
+
+	return c.resolveNAT(session, natType, promiscuity, natMappingScheme)
 }
