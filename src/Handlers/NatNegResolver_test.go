@@ -20,39 +20,39 @@ func TestResolver_ExpectedNoNAT(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IPPORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IP_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_PORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)
@@ -76,27 +76,27 @@ func TestResolver_ExpecteFirewallOnly(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)
@@ -120,39 +120,39 @@ func TestResolver_ExpecteFullCone(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IPPORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IP_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_PORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)
@@ -176,43 +176,43 @@ func TestResolver_ExpecteSymmetric(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	initItem.Address = netip.MustParseAddrPort("65.25.25.25:6500")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	initItem.Address = netip.MustParseAddrPort("5.25.25.25:6500")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	initItem.Address = netip.MustParseAddrPort("185.25.25.25:6500")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	initItem.Address = netip.MustParseAddrPort("195.25.25.25:6500")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IPPORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IP_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_PORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)
@@ -236,31 +236,31 @@ func TestResolver_ExpecteRestrictedPortCone(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_IP_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)
@@ -284,31 +284,31 @@ func TestResolver_ExpecteRestrictedCone(t *testing.T) {
 	initItem.ServerType = NN_SERVER_GP
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.1:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN1
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.2:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN2
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.3:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_NN3
 	initItem.DriverAddress = netip.MustParseAddrPort("127.0.0.4:11111")
 	session.InitAddresses = append(session.InitAddresses, initItem)
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	initItem.ServerType = NN_SERVER_UNSOLICITED_PORT_PROBE
 	initItem.DriverAddress = netip.MustParseAddrPort("172.16.26.26:11111")
-	session.ConnectPingAddresses = append(session.ConnectPingAddresses, initItem)
+	session.ERTAddresses = append(session.ERTAddresses, initItem)
 
 	var resolver NatNegResolver
 	natType, _, _ := resolver.detectNAT_Version2(session)

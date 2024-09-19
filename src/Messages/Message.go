@@ -6,7 +6,7 @@ import (
 )
 
 type Message struct {
-	FromAddress   string      `json:"from_address"`
+	Address       string      `json:"address"`
 	DriverAddress string      `json:"driver_address"`
 	Hostname      string      `json:"hostname"`
 	Gamename      string      `json:"gamename"`

@@ -1,6 +1,7 @@
 package Handlers
 
 import (
+	"log"
 	"net/netip"
 	"testing"
 	"time"
@@ -22,6 +23,12 @@ func (h *OutboundTestHandler) SendMessage(msg Messages.Message) {
 		h.gotReportData = true
 	} else if msg.Type == "init_ack" {
 		h.gotInitAck = true
+	} else if msg.Type == "ert" {
+		var portType int = 0
+		if msg.Message.(Messages.ERTMessage).UnsolicitedPort {
+			portType = 1
+		}
+		log.Printf("got ert req - %s %s %d\n", msg.DriverAddress, msg.Address, portType)
 	}
 }
 func (h *OutboundTestHandler) SendDeadbeatMessage(client *NatNegSessionClient) {
@@ -39,7 +46,7 @@ func TestReport(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2)
+	core.Init(outboundHandler, 2, "11.11.11.11:1111")
 
 	var msg Messages.Message
 	var reportMsg Messages.ReportMessage
@@ -57,11 +64,11 @@ func TestReport(t *testing.T) {
 
 func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	var outboundHandler IOutboundHandler
-	var testHandler *OutboundTestHandler = &OutboundTestHandler{}
-	outboundHandler = testHandler
+	var testHandler OutboundTestHandler = OutboundTestHandler{}
+	outboundHandler = &testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 30)
+	core.Init(outboundHandler, 5, "11.11.11.11:1111")
 
 	var cookie = 123321
 
@@ -77,19 +84,19 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	msg.Cookie = cookie
 	msg.Type = "init"
 	msg.Version = 2
-	msg.DriverAddress = "127.0.0.1:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.1:11111"
+	msg.Address = "25.25.25.25:6500"
 	msg.Gamename = "test"
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.2:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.2:11111"
+	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 1
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.3:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.3:11111"
+	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 2
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
@@ -103,19 +110,19 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	msg.Message = initMsg
 	msg.Type = "init"
 	msg.Version = 2
-	msg.DriverAddress = "127.0.0.1:111111"
-	msg.FromAddress = "66.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.1:11111"
+	msg.Address = "66.25.25.25:6500"
 	msg.Gamename = "test"
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.2:111111"
-	msg.FromAddress = "66.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.2:11111"
+	msg.Address = "66.25.25.25:6500"
 	initMsg.PortType = 1
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.3:111111"
-	msg.FromAddress = "66.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.3:11111"
+	msg.Address = "66.25.25.25:6500"
 	initMsg.PortType = 2
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
@@ -127,6 +134,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 
 	if testHandler.curretConnectIndex != 2 {
 		t.Errorf("Unexpected connect index")
+		return
 	}
 	var gpInitAddr = testHandler.connectClients[0].findAddressInfoOfType(NN_SERVER_GP)
 	if gpInitAddr.Address != testHandler.connectAddresses[1] {
@@ -148,6 +156,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 
 	if testHandler.curretConnectIndex != 2 {
 		t.Errorf("Unexpected connect index - retry not sent")
+		return
 	}
 
 	gpInitAddr = testHandler.connectClients[0].findAddressInfoOfType(NN_SERVER_GP)
@@ -163,12 +172,12 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	//send acks from both clients
 	var connectAckMsg Messages.Message
 	connectAckMsg.Cookie = cookie
-	connectAckMsg.DriverAddress = "127.0.0.2:111111"
-	connectAckMsg.FromAddress = "66.25.25.25:6500"
+	connectAckMsg.DriverAddress = "127.0.0.2:11111"
+	connectAckMsg.Address = "66.25.25.25:6500"
 	connectAckMsg.Type = "connect_ack"
 	HandleMessage(core, outboundHandler, connectAckMsg)
 
-	connectAckMsg.FromAddress = "25.25.25.25:6500"
+	connectAckMsg.Address = "25.25.25.25:6500"
 	HandleMessage(core, outboundHandler, connectAckMsg)
 
 	var sess = core.findSessionByCookie(cookie)
@@ -187,7 +196,7 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2)
+	core.Init(outboundHandler, 2, "66.66.66.66:6666")
 
 	var msg Messages.Message
 	var initMsg Messages.InitMessage
@@ -200,19 +209,19 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	msg.Message = initMsg
 	msg.Type = "init"
 	msg.Version = 2
-	msg.DriverAddress = "127.0.0.1:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.1:11111"
+	msg.Address = "25.25.25.25:6500"
 	msg.Gamename = "test"
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.2:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.2:11111"
+	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 1
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
 
-	msg.DriverAddress = "127.0.0.3:111111"
-	msg.FromAddress = "25.25.25.25:6500"
+	msg.DriverAddress = "127.0.0.3:11111"
+	msg.Address = "25.25.25.25:6500"
 	initMsg.PortType = 2
 	msg.Message = initMsg
 	HandleMessage(core, outboundHandler, msg)
