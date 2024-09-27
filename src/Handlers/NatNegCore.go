@@ -443,7 +443,7 @@ func (c *NatNegCore) SendRemoteERT(client *NatNegSessionClient, driverAddress st
 		ertMsg.PortType = 1
 	}*/
 
-	log.Printf("Send ERT %s, driver: %s\n - to: %s", client.PublicIP.String(), driverAddress, msg.Address)
+	log.Printf("Send ERT %s, driver: %s - to: %s", client.PublicIP.String(), driverAddress, msg.Address)
 
 	msg.Message = &ertMsg
 	msg.Type = "ert"
