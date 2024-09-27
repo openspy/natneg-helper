@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	MAX_ERT_RESENDS int = 2
+	MAX_RESENDS int = 2
 )
 
 type NatNegSessionAddressInfo struct {
@@ -46,9 +46,10 @@ type NatNegSessionClient struct {
 	NumERTResends     int
 	ERTResendComplete bool
 
-	ConnectAddress  netip.AddrPort //final resolved address - for retries
-	LastSentConnect time.Time
-	ConnectAckTime  time.Time
+	ConnectAddress    netip.AddrPort //final resolved address - for retries
+	LastSentConnect   time.Time
+	ConnectAckTime    time.Time
+	NumConnectResends int
 
 	NATType        NATType
 	NATPromiscuity NATPromiscuity
@@ -105,7 +106,7 @@ func (c *NatNegSessionClient) resendERTRequests(core *NatNegCore) {
 	if sendReq {
 		c.NumERTResends = c.NumERTResends + 1
 		c.sendERTRequests(core)
-		if c.NumERTResends >= MAX_ERT_RESENDS {
+		if c.NumERTResends >= MAX_RESENDS {
 			c.ERTResendComplete = true
 		}
 	}
@@ -284,7 +285,8 @@ func (c *NatNegCore) HandleInitMessage(msg Messages.Message) {
 
 	ipport, parseerr := netip.ParseAddrPort(msg.Address)
 	if parseerr != nil {
-		log.Panicf("Failed to parse IP Port: %s\n", parseerr.Error())
+		log.Printf("Failed to parse IP Port: %s\n", parseerr.Error())
+		return
 	}
 	//clientSession.Address = ipport
 
@@ -338,6 +340,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 			diff = currentTime.Sub(session.SessionClients[0].LastSentConnect).Seconds()
 			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
 				session.SessionClients[0].LastSentConnect = time.Now()
+				session.SessionClients[0].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
 			}
 		}
@@ -345,8 +348,13 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 			diff = currentTime.Sub(session.SessionClients[1].LastSentConnect).Seconds()
 			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
 				session.SessionClients[1].LastSentConnect = time.Now()
+				session.SessionClients[1].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
 			}
+		}
+
+		if session.SessionClients[0].NumConnectResends > MAX_RESENDS && session.SessionClients[1].NumConnectResends > MAX_RESENDS {
+			c.deleteSession(session.Cookie, false)
 		}
 
 	}

@@ -36,7 +36,7 @@ func (h *AMQPOutboundHandler) SendMessage(msg Messages.Message) {
 			Body:        body,
 		})
 	if err != nil {
-		log.Printf("Failed to publish message: %s\n", err.Error())
+		log.Panicf("Failed to publish message: %s\n", err.Error())
 		return
 	}
 }
