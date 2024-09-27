@@ -58,7 +58,7 @@ type NatNegResolver struct {
 
 func (c *NatNegResolver) portsMatch(expected uint16, addresses ...*NatNegSessionAddressInfo) bool {
 	for i := range addresses {
-		if addresses[i] != nil || addresses[i].Address.Port() != expected {
+		if addresses[i] == nil || addresses[i].Address.Port() != expected {
 			return false
 		}
 	}
@@ -81,7 +81,7 @@ func (c *NatNegResolver) detectNAT_Version2(session NatNegSessionClient) (NATTyp
 	//var restricted bool = solicitedReply == nil
 	var ipRestricted bool = unsolicitedIPReply == nil
 	var portRestricted bool = unsolicitedPortReply == nil && unsolicitedIPPortReply == nil
-	var publicAddrIsPrivateAddr bool = session.PrivateAddress.Addr() == solicitedReply.Address.Addr()
+	var publicAddrIsPrivateAddr bool = solicitedReply != nil && session.PrivateAddress.IsValid() && session.PrivateAddress.Addr() == solicitedReply.Address.Addr()
 
 	/*var diff int = 0
 
@@ -95,7 +95,7 @@ func (c *NatNegResolver) detectNAT_Version2(session NatNegSessionClient) (NATTyp
 		natType = NAT_TYPE_FIREWALL_ONLY
 	} else {
 		// What type of NAT is it?
-		var isSymmetric bool = solicitedReply.Address.Addr() != solicitedReply2.Address.Addr()
+		var isSymmetric bool = solicitedReply != nil && solicitedReply2 != nil && solicitedReply.Address.Addr() != solicitedReply2.Address.Addr()
 		if isSymmetric {
 			natType = NAT_TYPE_SYMMETRIC
 		} else if portRestricted {
