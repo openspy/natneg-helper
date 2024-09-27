@@ -106,15 +106,23 @@ func (c *NatNegResolver) detectNAT_Version2(session NatNegSessionClient) (NATTyp
 			natType = NAT_TYPE_FULL_CONE
 		}
 	}
+	var solicitedPort uint16 = 0
+	if solicitedReply != nil {
+		solicitedPort = solicitedReply.Address.Port()
+	}
+	var privatePort uint16 = 0
+	if session.PrivateAddress.IsValid() {
+		privatePort = session.PrivateAddress.Port()
+	}
 
 	// What is the port mapping behavior?
-	if c.portsMatch(session.PrivateAddress.Port(), solicitedReply, solicitedReply2, unsolicitedIPPortReply, unsolicitedIPReply, unsolicitedPortReply) {
+	if c.portsMatch(privatePort, solicitedReply, solicitedReply2, unsolicitedIPPortReply, unsolicitedIPReply, unsolicitedPortReply) {
 		// Using private port as the public port.
 		natMappingScheme = NAT_MAPPING_SCHEME_PRIVATE_AS_PUBLIC
-	} else if c.portsMatch(solicitedReply.Address.Port(), solicitedReply2, unsolicitedIPPortReply, unsolicitedIPReply, unsolicitedPortReply) {
+	} else if c.portsMatch(solicitedPort, solicitedReply2, unsolicitedIPPortReply, unsolicitedIPReply, unsolicitedPortReply) {
 		// Using the same public port for all requests from the same private port.
 		natMappingScheme = NAT_MAPPING_SCHEME_CONSISTENT_PORT
-	} else if c.portsMatch(session.PrivateAddress.Port(), solicitedReply) && c.portsMatch(session.PrivateAddress.Port()+1, solicitedReply2) {
+	} else if c.portsMatch(privatePort, solicitedReply) && c.portsMatch(privatePort+1, solicitedReply2) {
 		// Using private port as the public port for the first mapping.
 		// Using an incremental (+1) port mapping scheme there after.
 		natMappingScheme = NAT_MAPPING_SCHEME_MIXED
