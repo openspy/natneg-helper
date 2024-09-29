@@ -10,6 +10,8 @@ import (
 )
 
 const REMOTE_DRIVER string = "66.66.66.66:6666"
+const REMOTE_PORT_DRIVER string = "16.66.66.66:6666"
+const REMOTE_IPPORT_DRIVER string = "26.66.66.66:6666"
 
 type NNCoreTestOBH struct {
 	gotDeadbeat       bool
@@ -26,19 +28,13 @@ type NNCoreTestOBH struct {
 
 func (c *NNCoreTestOBH) SendMessage(msg Messages.Message) {
 	if msg.Type == "ert" {
-		var ertMsg *Messages.ERTMessage = msg.Message.(*Messages.ERTMessage)
-		var unsolictedPort = ertMsg.UnsolicitedPort
-		if msg.DriverAddress == REMOTE_DRIVER { //is remote / unsolicited
-			if unsolictedPort {
-				c.gotUnsolicitedIPPortERT = true
-			}
-		} else { //solicited
+		if msg.DriverAddress == REMOTE_DRIVER {
 			c.gotSolicatedERT = true
-			if unsolictedPort {
-				c.gotUnsolicitedPortERT = true
-			}
+		} else if msg.DriverAddress == REMOTE_PORT_DRIVER {
+			c.gotUnsolicitedPortERT = true
+		} else if msg.DriverAddress == REMOTE_IPPORT_DRIVER {
+			c.gotUnsolicitedIPPortERT = true
 		}
-
 	}
 }
 func (c *NNCoreTestOBH) SendDeadbeatMessage(client *NatNegSessionClient) {
@@ -54,7 +50,7 @@ func (c *NNCoreTestOBH) SendConnectMessage(client *NatNegSessionClient, ipAddres
 func setup(timeout int) (NatNegCore, *NNCoreTestOBH) {
 	var obh *NNCoreTestOBH = &NNCoreTestOBH{}
 	var core NatNegCore
-	core.Init(obh, timeout, REMOTE_DRIVER)
+	core.Init(obh, timeout, REMOTE_DRIVER, REMOTE_PORT_DRIVER, REMOTE_IPPORT_DRIVER)
 	return core, obh
 }
 func TestInit_GotPeers_OpenNATAll(t *testing.T) {
@@ -70,8 +66,7 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 	msg.Address = "127.0.0.1:7777"
 
 	var initMsg Messages.InitMessage
-	initMsg.LocalIP = 0x19191919
-	initMsg.LocalPort = 7777
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 
 	//CLIENT 1
 	initMsg.ClientIndex = 0
@@ -125,9 +120,9 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 
 	//send unsolicited port - solicited IP response
 	msg.Type = "ert_ack"
-	var ertMsg Messages.ERTMessage
-	ertMsg.UnsolicitedPort = true
-	msg.Message = &ertMsg
+	//var ertMsg Messages.ERTMessage
+	//ertMsg.UnsolicitedPort = true
+	//msg.Message = &ertMsg
 	ertHandler.HandleMessage(core, obh, msg)
 
 	//send unsolicted port - unsolicited IP response
@@ -136,8 +131,8 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 
 	//send solicted port - unsolicited IP response
 	msg.DriverAddress = REMOTE_DRIVER
-	ertMsg.UnsolicitedPort = false
-	msg.Message = &ertMsg
+	//ertMsg.UnsolicitedPort = false
+	//msg.Message = &ertMsg
 	ertHandler.HandleMessage(core, obh, msg)
 
 	core.Tick()
@@ -170,8 +165,7 @@ func TestInit_GotPeers_xx(t *testing.T) {
 	msg.Address = "127.0.0.1:7777"
 
 	var initMsg Messages.InitMessage
-	initMsg.LocalIP = 0x19191919
-	initMsg.LocalPort = 7777
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 
 	//CLIENT 1
 	initMsg.ClientIndex = 0
@@ -225,9 +219,9 @@ func TestInit_GotPeers_xx(t *testing.T) {
 
 	//send unsolicited port - solicited IP response
 	msg.Type = "ert_ack"
-	var ertMsg Messages.ERTMessage
-	ertMsg.UnsolicitedPort = true
-	msg.Message = &ertMsg
+	//var ertMsg Messages.ERTMessage
+	//ertMsg.UnsolicitedPort = true
+	//msg.Message = &ertMsg
 	ertHandler.HandleMessage(core, obh, msg)
 
 	for i := 0; i < 120; i++ {
@@ -259,8 +253,7 @@ func TestDeadbeat(t *testing.T) {
 	msg.Address = "127.0.0.1:7777"
 
 	var initMsg Messages.InitMessage
-	initMsg.LocalIP = 111
-	initMsg.LocalPort = 666
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 	initMsg.UseGamePort = 1
 
 	msg.Message = &initMsg

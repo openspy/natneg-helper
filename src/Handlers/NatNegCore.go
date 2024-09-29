@@ -361,12 +361,25 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 }
 
 func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
+
+	//same public IP, no NAT logic needed
+	if session.SessionClients[0].PublicIP == session.SessionClients[1].PublicIP {
+		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[1].PrivateAddress)
+		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[0].PrivateAddress)
+		session.SessionClients[0].LastSentConnect = time.Now()
+		session.SessionClients[1].LastSentConnect = time.Now()
+		session.SessionClients[0].ConnectAddress = session.SessionClients[1].PrivateAddress
+		session.SessionClients[1].ConnectAddress = session.SessionClients[0].PrivateAddress
+		log.Printf("[%s] Connect to: %s\n", session.SessionClients[0].PublicIP.String(), session.SessionClients[1].PrivateAddress.String())
+		log.Printf("[%s] Connect to: %s\n", session.SessionClients[1].PublicIP.String(), session.SessionClients[0].PrivateAddress.String())
+		return
+	}
 	var resolved = c.resolver.ResolveNAT(session.SessionClients[0])
 
 	if session.SessionClients[1].LastSentConnect.IsZero() {
 		session.SessionClients[1].ConnectAddress = resolved
 		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[1])
-		log.Printf("[%s] Connect to: %s - TYPE: %s", session.SessionClients[1].PublicIP.String(), resolved.String(), NATTypeToString(natType))
+		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[1].PublicIP.String(), resolved.String(), NATTypeToString(natType))
 		session.SessionClients[1].LastSentConnect = time.Now()
 		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
 	}
@@ -376,7 +389,7 @@ func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 		session.SessionClients[0].ConnectAddress = resolved
 
 		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[0])
-		log.Printf("[%s] Connect to: %s - TYPE: %s", session.SessionClients[0].PublicIP.String(), resolved.String(), NATTypeToString(natType))
+		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[0].PublicIP.String(), resolved.String(), NATTypeToString(natType))
 		session.SessionClients[0].LastSentConnect = time.Now()
 		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
 	}

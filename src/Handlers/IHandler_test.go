@@ -24,11 +24,11 @@ func (h *OutboundTestHandler) SendMessage(msg Messages.Message) {
 	} else if msg.Type == "init_ack" {
 		h.gotInitAck = true
 	} else if msg.Type == "ert" {
-		var portType int = 0
+		/*var portType int = 0
 		if msg.Message.(*Messages.ERTMessage).UnsolicitedPort {
 			portType = 1
-		}
-		log.Printf("got ert req - %s %s %d\n", msg.DriverAddress, msg.Address, portType)
+		}*/
+		log.Printf("got ert req - %s %s\n", msg.DriverAddress, msg.Address)
 	}
 }
 func (h *OutboundTestHandler) SendDeadbeatMessage(client *NatNegSessionClient) {
@@ -46,7 +46,7 @@ func TestReport(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2, "11.11.11.11:1111")
+	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
 
 	var msg Messages.Message
 	var reportMsg Messages.ReportMessage
@@ -68,15 +68,14 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	outboundHandler = &testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 5, "11.11.11.11:1111")
+	core.Init(outboundHandler, 5, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
 
 	var cookie = 123321
 
 	var msg Messages.Message
 	var initMsg Messages.InitMessage
 	initMsg.ClientIndex = 0
-	initMsg.LocalIP = 0x0A000001
-	initMsg.LocalPort = 7777
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
@@ -102,8 +101,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	HandleMessage(core, outboundHandler, msg)
 
 	initMsg.ClientIndex = 1
-	initMsg.LocalIP = 0x0A000001
-	initMsg.LocalPort = 7777
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 
@@ -196,13 +194,12 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2, "66.66.66.66:6666")
+	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
 
 	var msg Messages.Message
 	var initMsg Messages.InitMessage
 	initMsg.ClientIndex = 1
-	initMsg.LocalIP = 0x0A000001
-	initMsg.LocalPort = 7777
+	initMsg.PrivateAddress = "10.1.1.1:7777"
 	initMsg.PortType = 0
 	initMsg.UseGamePort = 1
 

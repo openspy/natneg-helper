@@ -139,12 +139,7 @@ func (c NatNegResolver) resolveNAT(session NatNegSessionClient, natType NATType,
 	if rootServer == nil {
 		return netip.AddrPort{}
 	}
-	var unsolicitedAddress netip.AddrPort
-	if session.PrivateAddress.Port() != 0 {
-		unsolicitedAddress = netip.AddrPortFrom(rootServer.Address.Addr(), session.PrivateAddress.Port())
-	} else {
-		unsolicitedAddress = rootServer.Address
-	}
+	var unsolicitedAddress netip.AddrPort = rootServer.Address
 
 	var returnAddress netip.AddrPort
 	switch natType {
