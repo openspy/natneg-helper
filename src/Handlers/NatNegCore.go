@@ -187,7 +187,7 @@ func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int, unsolic
 	c.Sessions = make(map[int]*NatNegSession)
 	c.outboundHandler = obh
 	c.deadbeatTimeoutSecs = deadbeatTimeoutSecs
-	c.connectRetrySecs = 5
+	c.connectRetrySecs = 2
 	c.resolver = &NatNegResolver{}
 	c.unsolictedPortERTDriver = unsolictedPortERTDriver
 	c.unsolicteIPERTDriver = unsolicteIPERTDriver
@@ -339,7 +339,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 		if !session.SessionClients[0].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[0].LastSentConnect).Seconds()
 			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
-				session.SessionClients[0].LastSentConnect = time.Now()
+				session.SessionClients[0].LastSentConnect = currentTime
 				session.SessionClients[0].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
 			}
@@ -347,8 +347,8 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 		if !session.SessionClients[1].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[1].LastSentConnect).Seconds()
 			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
-				session.SessionClients[1].LastSentConnect = time.Now()
-				session.SessionClients[1].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
+				session.SessionClients[1].LastSentConnect = currentTime
+				session.SessionClients[1].NumConnectResends = session.SessionClients[1].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
 			}
 		}
@@ -362,16 +362,20 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 
 func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 
+	var now = time.Now()
+
 	//same public IP, no NAT logic needed
 	if session.SessionClients[0].PublicIP == session.SessionClients[1].PublicIP {
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[1].PrivateAddress)
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[0].PrivateAddress)
-		session.SessionClients[0].LastSentConnect = time.Now()
-		session.SessionClients[1].LastSentConnect = time.Now()
+		session.SessionClients[0].LastSentConnect = now
+		session.SessionClients[1].LastSentConnect = now
 		session.SessionClients[0].ConnectAddress = session.SessionClients[1].PrivateAddress
 		session.SessionClients[1].ConnectAddress = session.SessionClients[0].PrivateAddress
-		log.Printf("[%s] Connect to: %s\n", session.SessionClients[0].PublicIP.String(), session.SessionClients[1].PrivateAddress.String())
-		log.Printf("[%s] Connect to: %s\n", session.SessionClients[1].PublicIP.String(), session.SessionClients[0].PrivateAddress.String())
+
+		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
+		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
+
+		log.Printf("[%s] Connect to: %s\n", session.SessionClients[0].PublicIP.String(), session.SessionClients[0].ConnectAddress.String())
+		log.Printf("[%s] Connect to: %s\n", session.SessionClients[1].PublicIP.String(), session.SessionClients[1].ConnectAddress.String())
 		return
 	}
 	var resolved = c.resolver.ResolveNAT(session.SessionClients[0])
@@ -380,7 +384,7 @@ func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 		session.SessionClients[1].ConnectAddress = resolved
 		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[1])
 		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[1].PublicIP.String(), resolved.String(), NATTypeToString(natType))
-		session.SessionClients[1].LastSentConnect = time.Now()
+		session.SessionClients[1].LastSentConnect = now
 		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
 	}
 
@@ -390,7 +394,7 @@ func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 
 		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[0])
 		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[0].PublicIP.String(), resolved.String(), NATTypeToString(natType))
-		session.SessionClients[0].LastSentConnect = time.Now()
+		session.SessionClients[0].LastSentConnect = now
 		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
 	}
 

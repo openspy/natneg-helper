@@ -29,7 +29,7 @@ func main() {
 	ipProbeDriver := os.Getenv("UNSOLICITED_IP_PROBE_DRIVER")
 	ipPortProbeDriver := os.Getenv("UNSOLICITED_IPPORT_PROBE_DRIVER")
 
-	core.Init(outboundHandler, 20, portProbeDriver, ipProbeDriver, ipPortProbeDriver)
+	core.Init(outboundHandler, 10, portProbeDriver, ipProbeDriver, ipPortProbeDriver)
 
 	var amqpAddress string = os.Getenv("RABBITMQ_URL")
 	conn, err := amqp.Dial(amqpAddress)
