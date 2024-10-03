@@ -208,6 +208,8 @@ func (c *NatNegCore) checkDeadbeats(currentTime time.Time) {
 			c.sendNegotiatedConnection(session)
 		} else if session.IsComplete() {
 			c.sendNegotiatedConnection(session) //could be an ERT resend or something
+		} else if diff > float64(c.deadbeatTimeoutSecs) { //delete old dead connection
+			c.deleteSession(session.Cookie, false)
 		}
 	}
 }
@@ -338,7 +340,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 	for _, session := range c.Sessions {
 		if !session.SessionClients[0].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[0].LastSentConnect).Seconds()
-			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
+			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[0].NumConnectResends < MAX_RESENDS {
 				session.SessionClients[0].LastSentConnect = currentTime
 				session.SessionClients[0].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
@@ -346,7 +348,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 		}
 		if !session.SessionClients[1].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[1].LastSentConnect).Seconds()
-			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) {
+			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[1].NumConnectResends < MAX_RESENDS {
 				session.SessionClients[1].LastSentConnect = currentTime
 				session.SessionClients[1].NumConnectResends = session.SessionClients[1].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
