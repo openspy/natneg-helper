@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	MAX_RESENDS int = 2
+	MAX_RESENDS int = 3
 )
 
 type NatNegSessionAddressInfo struct {
@@ -340,7 +340,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 	for _, session := range c.Sessions {
 		if !session.SessionClients[0].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[0].LastSentConnect).Seconds()
-			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[0].NumConnectResends < MAX_RESENDS {
+			if session.SessionClients[0].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[0].NumConnectResends <= MAX_RESENDS {
 				session.SessionClients[0].LastSentConnect = currentTime
 				session.SessionClients[0].NumConnectResends = session.SessionClients[0].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
@@ -348,7 +348,7 @@ func (c *NatNegCore) checkConnectRetries(currentTime time.Time) {
 		}
 		if !session.SessionClients[1].LastSentConnect.IsZero() {
 			diff = currentTime.Sub(session.SessionClients[1].LastSentConnect).Seconds()
-			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[1].NumConnectResends < MAX_RESENDS {
+			if session.SessionClients[1].ConnectAckTime.IsZero() && diff > float64(c.connectRetrySecs) && session.SessionClients[1].NumConnectResends <= MAX_RESENDS {
 				session.SessionClients[1].LastSentConnect = currentTime
 				session.SessionClients[1].NumConnectResends = session.SessionClients[1].NumConnectResends + 1
 				c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
