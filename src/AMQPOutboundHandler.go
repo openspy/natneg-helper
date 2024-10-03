@@ -71,8 +71,11 @@ func (h *AMQPOutboundHandler) SendDeadbeatMessage(client *Handlers.NatNegSession
 func (h *AMQPOutboundHandler) SendConnectMessage(client *Handlers.NatNegSessionClient, ipAddress netip.AddrPort) {
 	var msg Messages.Message
 	var connectMsg Messages.ConnectMessage
-
-	var ipBuff = ipAddress.Addr().As4()
+	var addr = ipAddress.Addr()
+	if !addr.IsValid() {
+		return
+	}
+	var ipBuff = addr.As4()
 
 	cpyBuff := make([]byte, 4)
 	cpyBuff[3] = ipBuff[0]

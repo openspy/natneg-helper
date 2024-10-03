@@ -324,7 +324,7 @@ func (c *NatNegCore) HandleInitMessage(msg Messages.Message) {
 
 	clientSession.PublicIP = ipport.Addr()
 
-	log.Printf("[%s] GOT INIT:  cookie: %d, idx: %d, type: %d, private: %s", msg.Address, msg.Cookie, initMsg.ClientIndex, initMsg.PortType, clientSession.PrivateAddress.String())
+	log.Printf("[%s] GOT INIT:  cookie: %d, idx: %d, type: %d, private: %s, game: %s\n", msg.Address, msg.Cookie, initMsg.ClientIndex, initMsg.PortType, clientSession.PrivateAddress.String(), msg.Gamename)
 	if clientSession.LastERTResend.IsZero() {
 		clientSession.sendERTRequests(c)
 	}
