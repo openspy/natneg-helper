@@ -31,16 +31,32 @@ func main() {
 
 	core.Init(outboundHandler, 10, portProbeDriver, ipProbeDriver, ipPortProbeDriver)
 
+	//make outbound amqp connection
 	var amqpAddress string = os.Getenv("RABBITMQ_URL")
-	conn, err := amqp.Dial(amqpAddress)
+	outboundConn, err := amqp.Dial(amqpAddress)
 	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	defer outboundConn.Close()
 
-	ch, err := conn.Channel()
+	outboundChannel, err := outboundConn.Channel()
 	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	defer outboundChannel.Close()
 
-	q, err := ch.QueueDeclare(
+	outbountCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	amqpHandler.amqpCtx = outbountCtx
+	amqpHandler.amqpChannel = outboundChannel
+
+	//make listener connection, etc
+	listenConn, err := amqp.Dial(amqpAddress)
+	failOnError(err, "Failed to connect to RabbitMQ")
+	defer listenConn.Close()
+
+	chListen, err := listenConn.Channel()
+	failOnError(err, "Failed to open a channel")
+	defer chListen.Close()
+
+	q, err := chListen.QueueDeclare(
 		"natneg-core", // name
 		false,         // durable
 		true,          // delete when unused
@@ -50,16 +66,9 @@ func main() {
 	)
 	failOnError(err, "Failed to declare a queue")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	chListen.QueueBind(q.Name, "natneg.core", "openspy.natneg", false, nil)
 
-	amqpHandler.amqpQueue = q
-	amqpHandler.amqpCtx = ctx
-	amqpHandler.amqpChannel = ch
-
-	ch.QueueBind(q.Name, "natneg.core", "openspy.natneg", false, nil)
-
-	msgs, err := ch.Consume(
+	msgs, err := chListen.Consume(
 		q.Name, // queue
 		"",     // consumer
 		true,   // auto-ack
@@ -70,24 +79,19 @@ func main() {
 	)
 	failOnError(err, "Failed to register a consumer")
 
-	var forever chan struct{}
-
 	go func() {
 		for {
 			core.Tick()
 		}
 	}()
 
-	go func() {
-		for d := range msgs {
-			var msg Messages.Message
-			err = json.Unmarshal(d.Body, &msg)
-			if err == nil {
-				Handlers.HandleMessage(core, outboundHandler, msg)
-			}
-
+	for d := range msgs {
+		var msg Messages.Message
+		err = json.Unmarshal(d.Body, &msg)
+		if err == nil {
+			Handlers.HandleMessage(core, outboundHandler, msg)
+		} else {
+			log.Printf("Failed to unmarshal msg\n")
 		}
-	}()
-
-	<-forever
+	}
 }

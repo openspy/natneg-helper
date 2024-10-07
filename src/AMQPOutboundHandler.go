@@ -14,7 +14,6 @@ import (
 
 type AMQPOutboundHandler struct {
 	amqpCtx     context.Context
-	amqpQueue   amqp.Queue
 	amqpChannel *amqp.Channel
 }
 
