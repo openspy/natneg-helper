@@ -193,6 +193,9 @@ func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int, unsolic
 	c.unsolicteIPERTDriver = unsolicteIPERTDriver
 	c.unsolictedIPPortERTDriver = unsolictedIPPortERTDriver
 }
+func (c *NatNegCore) GetERTDrivers() (string, string, string) {
+	return c.unsolictedPortERTDriver, c.unsolicteIPERTDriver, c.unsolictedIPPortERTDriver
+}
 func (c *NatNegCore) sendERTProbes(currentTime time.Time) {
 	for _, session := range c.Sessions {
 		session.SessionClients[0].resendERTRequests(c)
@@ -205,12 +208,12 @@ func (c *NatNegCore) checkDeadbeats(currentTime time.Time) {
 		if diff > float64(c.deadbeatTimeoutSecs) && (!session.SessionClients[0].GotClient || !session.SessionClients[1].GotClient) {
 			c.deleteSession(session.Cookie, true)
 		} else if diff > float64(c.deadbeatTimeoutSecs) && !session.IsComplete() {
-			c.sendNegotiatedConnection(session)
+			c.deleteSession(session.Cookie, false)
 		} else if session.IsComplete() {
 			c.sendNegotiatedConnection(session) //could be an ERT resend or something
-		} else if diff > float64(c.deadbeatTimeoutSecs) { //delete old dead connection
-			c.deleteSession(session.Cookie, false)
-		}
+		} /* else if diff > float64(c.deadbeatTimeoutSecs) { //delete old dead connection
+
+		}*/
 	}
 }
 
@@ -368,36 +371,40 @@ func (c *NatNegCore) sendNegotiatedConnection(session *NatNegSession) {
 
 	//same public IP, no NAT logic needed
 	if session.SessionClients[0].PublicIP == session.SessionClients[1].PublicIP {
-		session.SessionClients[0].LastSentConnect = now
-		session.SessionClients[1].LastSentConnect = now
-		session.SessionClients[0].ConnectAddress = session.SessionClients[1].PrivateAddress
-		session.SessionClients[1].ConnectAddress = session.SessionClients[0].PrivateAddress
+		if session.SessionClients[1].LastSentConnect.IsZero() {
+			session.SessionClients[1].LastSentConnect = now
+			session.SessionClients[1].ConnectAddress = session.SessionClients[0].PrivateAddress
+			log.Printf("[%s] Connect to: %s\n", session.SessionClients[1].PublicIP.String(), session.SessionClients[1].ConnectAddress.String())
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
+		}
 
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], session.SessionClients[1].ConnectAddress)
+		if session.SessionClients[0].LastSentConnect.IsZero() {
+			session.SessionClients[0].LastSentConnect = now
+			session.SessionClients[0].ConnectAddress = session.SessionClients[1].PrivateAddress
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[0], session.SessionClients[0].ConnectAddress)
+			log.Printf("[%s] Connect to: %s\n", session.SessionClients[0].PublicIP.String(), session.SessionClients[0].ConnectAddress.String())
+		}
 
-		log.Printf("[%s] Connect to: %s\n", session.SessionClients[0].PublicIP.String(), session.SessionClients[0].ConnectAddress.String())
-		log.Printf("[%s] Connect to: %s\n", session.SessionClients[1].PublicIP.String(), session.SessionClients[1].ConnectAddress.String())
-		return
-	}
-	var resolved = c.resolver.ResolveNAT(session.SessionClients[0])
+	} else {
+		var resolved = c.resolver.ResolveNAT(session.SessionClients[0])
 
-	if session.SessionClients[1].LastSentConnect.IsZero() {
-		session.SessionClients[1].ConnectAddress = resolved
-		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[1])
-		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[1].PublicIP.String(), resolved.String(), NATTypeToString(natType))
-		session.SessionClients[1].LastSentConnect = now
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
-	}
+		if session.SessionClients[1].LastSentConnect.IsZero() {
+			session.SessionClients[1].ConnectAddress = resolved
+			natType, _, _ := c.resolver.DetectNAT(session.SessionClients[1])
+			log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[1].PublicIP.String(), resolved.String(), NATTypeToString(natType))
+			session.SessionClients[1].LastSentConnect = now
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[1], resolved)
+		}
 
-	if session.SessionClients[0].LastSentConnect.IsZero() {
-		resolved = c.resolver.ResolveNAT(session.SessionClients[1])
-		session.SessionClients[0].ConnectAddress = resolved
+		if session.SessionClients[0].LastSentConnect.IsZero() {
+			resolved = c.resolver.ResolveNAT(session.SessionClients[1])
+			session.SessionClients[0].ConnectAddress = resolved
 
-		natType, _, _ := c.resolver.DetectNAT(session.SessionClients[0])
-		log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[0].PublicIP.String(), resolved.String(), NATTypeToString(natType))
-		session.SessionClients[0].LastSentConnect = now
-		c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
+			natType, _, _ := c.resolver.DetectNAT(session.SessionClients[0])
+			log.Printf("[%s] Connect to: %s - TYPE: %s\n", session.SessionClients[0].PublicIP.String(), resolved.String(), NATTypeToString(natType))
+			session.SessionClients[0].LastSentConnect = now
+			c.outboundHandler.SendConnectMessage(&session.SessionClients[0], resolved)
+		}
 	}
 
 }

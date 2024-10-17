@@ -3,7 +3,6 @@ package Handlers
 import (
 	"log"
 	"net/netip"
-	"os"
 	"time"
 
 	"openspy.net/natneg-helper/src/Messages"
@@ -16,9 +15,11 @@ func (b *ERTAckHandler) HandleMessage(core NatNegCore, outboundHandler IOutbound
 
 	var nnType NNServerType = NN_SERVER_UNSOLICITED_PORT_PROBE
 
-	portProbeDriver := os.Getenv("UNSOLICITED_PORT_PROBE_DRIVER")
+	/*portProbeDriver := os.Getenv("UNSOLICITED_PORT_PROBE_DRIVER")
 	ipProbeDriver := os.Getenv("UNSOLICITED_IP_PROBE_DRIVER")
-	ipPortProbeDriver := os.Getenv("UNSOLICITED_IPPORT_PROBE_DRIVER")
+	ipPortProbeDriver := os.Getenv("UNSOLICITED_IPPORT_PROBE_DRIVER")*/
+
+	portProbeDriver, ipProbeDriver, ipPortProbeDriver := core.GetERTDrivers()
 
 	if msg.DriverAddress == ipPortProbeDriver {
 		nnType = NN_SERVER_UNSOLICITED_IPPORT_PROBE

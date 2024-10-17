@@ -11,7 +11,6 @@ type InitHandler struct {
 }
 
 func (b *InitHandler) HandleMessage(core NatNegCore, outboundHandler IOutboundHandler, msg Messages.Message) {
-
 	msg.Type = "init_ack"
 	outboundHandler.SendMessage(msg)
 

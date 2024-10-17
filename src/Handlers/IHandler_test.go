@@ -68,7 +68,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	outboundHandler = &testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 5, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
+	core.Init(outboundHandler, 15, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
 
 	var cookie = 123321
 
@@ -125,7 +125,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	msg.Message = &initMsg
 	HandleMessage(core, outboundHandler, msg)
 
-	for i := 0; i < 10 && testHandler.curretConnectIndex != 2; i++ {
+	for i := 0; i < 15 && testHandler.curretConnectIndex != 2; i++ {
 		core.Tick()
 		time.Sleep(1 * time.Second)
 	}
