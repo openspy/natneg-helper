@@ -180,9 +180,10 @@ type NatNegCore struct {
 	unsolictedPortERTDriver   string
 	unsolicteIPERTDriver      string
 	unsolictedIPPortERTDriver string
+	skipERT                   bool
 }
 
-func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int, unsolictedPortERTDriver string, unsolicteIPERTDriver string, unsolictedIPPortERTDriver string) {
+func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int, unsolictedPortERTDriver string, unsolicteIPERTDriver string, unsolictedIPPortERTDriver string, skipERT bool) {
 	c.timer = time.NewTicker(time.Second)
 	c.Sessions = make(map[int]*NatNegSession)
 	c.outboundHandler = obh
@@ -192,6 +193,10 @@ func (c *NatNegCore) Init(obh IOutboundHandler, deadbeatTimeoutSecs int, unsolic
 	c.unsolictedPortERTDriver = unsolictedPortERTDriver
 	c.unsolicteIPERTDriver = unsolicteIPERTDriver
 	c.unsolictedIPPortERTDriver = unsolictedIPPortERTDriver
+
+	if skipERT {
+		c.skipERT = true
+	}
 }
 func (c *NatNegCore) GetERTDrivers() (string, string, string) {
 	return c.unsolictedPortERTDriver, c.unsolicteIPERTDriver, c.unsolictedIPPortERTDriver
@@ -222,6 +227,11 @@ func (c *NatNegCore) createSession(msg Messages.Message) *NatNegSession {
 	session.Cookie = msg.Cookie
 	session.SessionCreateTime = time.Now()
 	session.Version = msg.Version
+
+	if c.skipERT {
+		session.SessionClients[0].ERTResendComplete = true
+		session.SessionClients[1].ERTResendComplete = true
+	}
 
 	session.SessionClients[0].Cookie = msg.Cookie
 	session.SessionClients[1].Cookie = msg.Cookie
@@ -328,7 +338,7 @@ func (c *NatNegCore) HandleInitMessage(msg Messages.Message) {
 	clientSession.PublicIP = ipport.Addr()
 
 	log.Printf("[%s] GOT INIT:  cookie: %d, idx: %d, type: %d, private: %s, game: %s\n", msg.Address, msg.Cookie, initMsg.ClientIndex, initMsg.PortType, clientSession.PrivateAddress.String(), msg.Gamename)
-	if clientSession.LastERTResend.IsZero() {
+	if clientSession.LastERTResend.IsZero() && !clientSession.ERTResendComplete {
 		clientSession.sendERTRequests(c)
 	}
 

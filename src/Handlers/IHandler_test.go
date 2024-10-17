@@ -46,7 +46,7 @@ func TestReport(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
+	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333", false)
 
 	var msg Messages.Message
 	var reportMsg Messages.ReportMessage
@@ -68,7 +68,7 @@ func TestInit_ExpectConnect_WithRetry_VerifyDeleteAfterAck(t *testing.T) {
 	outboundHandler = &testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 15, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
+	core.Init(outboundHandler, 15, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333", false)
 
 	var cookie = 123321
 
@@ -194,7 +194,7 @@ func TestInit_ExpectDeadbeat(t *testing.T) {
 	outboundHandler = testHandler
 
 	var core NatNegCore
-	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333")
+	core.Init(outboundHandler, 2, "11.11.11.11:1111", "11.11.11.11:2222", "22.22.22.22:3333", false)
 
 	var msg Messages.Message
 	var initMsg Messages.InitMessage

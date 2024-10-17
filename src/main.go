@@ -29,7 +29,14 @@ func main() {
 	ipProbeDriver := os.Getenv("UNSOLICITED_IP_PROBE_DRIVER")
 	ipPortProbeDriver := os.Getenv("UNSOLICITED_IPPORT_PROBE_DRIVER")
 
-	core.Init(outboundHandler, 10, portProbeDriver, ipProbeDriver, ipPortProbeDriver)
+	var skipERT bool = false
+
+	_, hasKey := os.LookupEnv("SKIP_ERT")
+	if hasKey {
+		skipERT = true
+	}
+
+	core.Init(outboundHandler, 10, portProbeDriver, ipProbeDriver, ipPortProbeDriver, skipERT)
 
 	//make outbound amqp connection
 	var amqpAddress string = os.Getenv("RABBITMQ_URL")

@@ -64,14 +64,14 @@ func (c *NNCoreTestOBH) SendConnectMessage(client *NatNegSessionClient, ipAddres
 
 }
 
-func setup(timeout int) (NatNegCore, *NNCoreTestOBH) {
+func setup(timeout int, noERT bool) (NatNegCore, *NNCoreTestOBH) {
 	var obh *NNCoreTestOBH = &NNCoreTestOBH{}
 	var core NatNegCore
-	core.Init(obh, timeout, REMOTE_DRIVER, REMOTE_PORT_DRIVER, REMOTE_IPPORT_DRIVER)
+	core.Init(obh, timeout, REMOTE_DRIVER, REMOTE_PORT_DRIVER, REMOTE_IPPORT_DRIVER, noERT)
 	return core, obh
 }
 func TestInit_GotPeers_OpenNATAll(t *testing.T) {
-	core, obh := setup(15)
+	core, obh := setup(15, false)
 
 	obh.core = &core
 
@@ -144,7 +144,7 @@ func TestInit_GotPeers_OpenNATAll(t *testing.T) {
 }
 
 func TestInit_GotPeers_RestrictedConeWithFullCone_NoAcks_ExpectDelete(t *testing.T) {
-	core, obh := setup(15)
+	core, obh := setup(15, false)
 
 	obh.core = &core
 	obh.answerERTs = true
@@ -249,8 +249,97 @@ func TestInit_GotPeers_RestrictedConeWithFullCone_NoAcks_ExpectDelete(t *testing
 	}
 }
 
+func TestInit_GotPeers_RestrictedConeWithFullCone_ExpectNoERT(t *testing.T) {
+	core, obh := setup(15, true)
+
+	obh.core = &core
+	obh.answerERTs = true
+
+	var msg Messages.Message
+	msg.Version = 3
+	msg.Cookie = 111
+	msg.Type = "init"
+	msg.DriverAddress = "10.1.1.1:6666"
+	msg.Address = "127.0.0.1:7777"
+
+	var initMsg Messages.InitMessage
+	initMsg.PrivateAddress = "10.1.1.1:7777"
+
+	//CLIENT 1
+	initMsg.ClientIndex = 0
+	initMsg.PortType = 0
+	initMsg.UseGamePort = 1
+	msg.Message = &initMsg
+	core.HandleInitMessage(msg) //NN1 / GamePort init - conn 1
+
+	initMsg.PortType = 1
+	msg.Message = &initMsg
+	msg.Address = "127.0.0.1:12312"
+	core.HandleInitMessage(msg) //NN1 / init1 init - conn 1
+
+	msg.DriverAddress = "10.1.1.1:6667"
+	msg.Address = "127.0.0.1:7778"
+	initMsg.PortType = 2
+	msg.Message = &initMsg
+	core.HandleInitMessage(msg) //NN2 / init2 init - conn 1
+
+	msg.DriverAddress = "10.1.1.1:6668"
+	msg.Address = "127.0.0.1:7778"
+	initMsg.PortType = 3
+	msg.Message = &initMsg
+	core.HandleInitMessage(msg) //NN2 / init2 init - conn 1
+
+	obh.answerERTs = false
+
+	//CLIENT 2
+
+	initMsg.UseGamePort = 0
+	initMsg.ClientIndex = 1
+	initMsg.PortType = 1
+	msg.Message = &initMsg
+	msg.DriverAddress = "10.1.1.1:6666"
+	msg.Address = "25.25.25.25:7777"
+	core.HandleInitMessage(msg) //NN1 / GamePort - conn 2
+
+	msg.Address = "25.25.25.25:22312"
+	initMsg.PortType = 2
+	msg.Message = &initMsg
+	core.HandleInitMessage(msg) //NN1 / init 1 - conn 2
+
+	msg.DriverAddress = "10.1.1.1:6667"
+	msg.Address = "25.25.25.25:7778"
+	initMsg.PortType = 3
+	msg.Message = &initMsg
+	core.HandleInitMessage(msg) //NN1 / init 1 - conn 2
+
+	core.Tick()
+
+	for i := 0; i < 120; i++ {
+		core.Tick()
+		time.Sleep(1 * time.Second)
+		if core.findSessionByCookie(msg.Cookie) == nil || obh.connectAddressIdx > 15 {
+			break
+		}
+	}
+
+	if !obh.gotConnect {
+		t.Errorf("Didn't get connect message")
+	} else {
+		log.Printf("got connect address 1: %s\n", obh.connectAddress[0].String())
+		log.Printf("got connect address 2: %s\n", obh.connectAddress[1].String())
+	}
+
+	if obh.gotDeadbeat {
+		t.Errorf("got unexpected deadbeat msg")
+	}
+
+	if core.findSessionByCookie(msg.Cookie) != nil {
+		t.Errorf("session not deleted")
+	}
+}
+
 func TestInit_GotPeers_SameIP_RestrictedConeWithFullCone_NoAcks_ExpectDelete(t *testing.T) {
-	core, obh := setup(15)
+	core, obh := setup(15, false)
 
 	obh.core = &core
 	obh.answerERTs = true
@@ -357,7 +446,7 @@ func TestInit_GotPeers_SameIP_RestrictedConeWithFullCone_NoAcks_ExpectDelete(t *
 }
 
 func TestDeadbeat(t *testing.T) {
-	core, obh := setup(2)
+	core, obh := setup(2, false)
 
 	var msg Messages.Message
 	msg.Cookie = 111
@@ -386,7 +475,7 @@ func TestDeadbeat(t *testing.T) {
 }
 
 func TestNatifyReq(t *testing.T) {
-	core, obh := setup(2)
+	core, obh := setup(2, false)
 
 	var msg Messages.Message
 	msg.Cookie = 111
