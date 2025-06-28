@@ -38,11 +38,23 @@ func main() {
 
 	core.Init(outboundHandler, 10, portProbeDriver, ipProbeDriver, ipPortProbeDriver, skipERT)
 
-	//make outbound amqp connection
-	var amqpAddress string = os.Getenv("RABBITMQ_URL")
-	outboundConn, err := amqp.Dial(amqpAddress)
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer outboundConn.Close()
+	//attempt outbound amqp connection max 20 tries
+    var attempts = 20;
+    var outboundConn amqp.Connection
+    var err error
+    var amqpAddress string = os.Getenv("RABBITMQ_URL")
+    for attempts > 0 {
+        outboundConn, err := amqp.Dial(amqpAddress)
+        if err != nil {
+           attempts -= 1
+       } else {
+           failOnError(err, "Failed to connect to RabbitMQ")
+           defer outboundConn.Close()
+       }
+       // Sleep for attempts * 5 secs
+       var duration = (20 - attempts) * 5
+       time.Sleep(time.Duration(duration)  * time.Second)
+    }
 
 	outboundChannel, err := outboundConn.Channel()
 	failOnError(err, "Failed to open a channel")
